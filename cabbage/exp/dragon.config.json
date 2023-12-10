@@ -1,0 +1,72 @@
+{
+  "host": "0.0.0.0:8080",
+  "allowed-hosts": [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "::"
+  ],
+  "apps": [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles"
+  ],
+  "middlewares": [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware"
+  ],
+  "templates": [
+    {
+        "app": true,
+        "backend": "django.template.backends.django.DjangoTemplates",
+        "sources": [],
+        "options": {
+            "context-processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages"
+            ]
+        }
+    }
+  ],
+  "databases": [
+    {
+      "name": "default",
+      "options": {
+        "engine": "django.db.backends.sqlite3",
+        "name": "db.sqlite3"
+      }
+    }
+  ],
+  "validators": [
+    {
+      "name": "password",
+      "checks": [
+        "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "django.contrib.auth.password_validation.CommonPasswordValidator",
+        "django.contrib.auth.password_validation.NumericPasswordValidator"
+      ]
+    }
+  ],
+  "staticfiles": [
+    "static"
+  ],
+  "routes": [
+    {
+      "path": "/carrot",
+      "include": "carrot.urls",
+      "namespace": null
+    }
+  ]
+}

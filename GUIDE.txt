@@ -1,0 +1,25 @@
+# start project with django
+
+django-admin startproject cabbage
+
+
+python manage.py startapp client
+python manage.py runserver 8080
+
+
+python manage.py makemigrations
+python manage.py migrate --run-syncdb
+python manage.py migrate
+
+python manage.py createsuperuser
+
+pip install -r ../../requirements.txt --root-user-action=ignore
+
+
+```python
+# create transaction BEGIN, ROLLBACK, COMMIT
+with transaction.atomic():
+    sid = transaction.savepoint()
+    # transaction.savepoint_rollback(sid)
+    transaction.savepoint_commit(sid)
+```

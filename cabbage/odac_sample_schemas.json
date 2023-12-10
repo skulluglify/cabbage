@@ -1,0 +1,22 @@
+{
+    "message": "successful predict plant disease",
+    "data": [
+        {
+            "image_data_boxes": "http://localhost:8080/odac/plant-disease/images/odac-plant-disease-image-sample-4bdd_mtv.png?token=",
+            "predictions": [
+                {
+                    "label": "Spinach-Diseased",
+                    "confidence": 0.8709769248962402,
+                    "diseases": [
+                        {
+                            "label": "Downy Mildew",
+                            "confidence": 0.5663323998451233
+                        }
+                    ],
+                    "diseased": true,
+                    "harvest": false
+                }
+            ]
+        }
+    ]
+}

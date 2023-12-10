@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC>
+<html lang="en">
+    <head>
+        <title>{{ meta.name|title }}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+        {% load static %}
+
+        <!-- Styles -->
+        <link href="{% static 'spinach/css/bootstrap.min.css' %}" rel="stylesheet" crossorigin="anonymous">
+        <link rel="stylesheet" href="{% static 'spinach/login/css/style.css' %}">
+
+        <!-- Scripts -->
+        <script src="{% static 'spinach/js/jquery.min.js' %}" defer crossorigin="anonymous"></script>
+        <script src="{% static 'spinach/js/bootstrap.bundle.min.js' %}" defer crossorigin="anonymous"></script>
+        <script src="{% static 'spinach/login/js/script.js' %}" defer></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 offset-md-3">
+                    <h2 class="text-center text-dark mt-5">Login Form</h2>
+                    <div class="text-center mb-5 text-dark">Made with Bootstrap</div>
+                    <div class="card my-5">
+                        <form class="card-body card-color p-lg-5"
+                              id="login"
+                              method="post"
+                              action="/profile/">
+                            {% csrf_token %}
+                            <div class="text-center">
+                                <img src="{% static 'spinach/images/profile.png' %}"
+                                     class="img-fluid profile-image-pic img-thumbnail rounded-circle my-3"
+                                     width="200px"
+                                     alt="profile"
+                                />
+                            </div>
+                            <div class="mb-3">
+                                <input type="text"
+                                       class="form-control"
+                                       id="username"
+                                       name="username"
+                                       aria-describedby="help-username"
+                                       placeholder="username"
+                                />
+                            </div>
+                            <div class="mb-3">
+                                <input type="password"
+                                       class="form-control"
+                                       id="password"
+                                       name="password"
+                                       placeholder="password"
+                                />
+                            </div>
+                            <div class="text-center">
+                                <button type="submit"
+                                        class="btn btn-color px-5 mb-5 w-100">
+                                    Login
+                                </button>
+                            </div>
+                            <div id="help-username" class="form-text text-center mb-5 text-dark">
+                                Not Registered?
+                                <a href="#" class="text-dark fw-bold">
+                                    Create an Account
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+          </div>
+    </body>
+</html>
