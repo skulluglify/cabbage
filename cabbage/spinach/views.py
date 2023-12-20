@@ -26,7 +26,7 @@ from .models import RecordModel, CommandModel, ProfileModel, ForecastModel
 from .odac_plant_disease import odac_plant_disease_predictor
 from .renderers import PNGRenderer
 from .serializers import UserSerializer, GroupSerializer, MyTokenObtainPairSerializer
-from .utils import (merge_body_params_as_dict, ok_json, NormalizeSerializer, tokenizer, get, refresh_token_verify,
+from .utils import (merge_body_params_as_dict, NormalizeSerializer, tokenizer, get, refresh_token_verify,
                     get_mime_type)
 
 
@@ -344,17 +344,10 @@ class RecordView(views.APIView):
             }, status=status.HTTP_401_UNAUTHORIZED)
 
         data = merge_body_params_as_dict(request)
-        fields = [
-            'ph', 'ec', 'air_temp',
-            'humidity', 'water_flow',
-            'lighting', 'full_water_tank',
-            'acid_actuator', 'alkaline_actuator',
-            'nutrient_actuator', 'fans_rpm',
-        ]
+        record = Record(**data)
 
-        data = dict((k, v) for k, v in data.items() if k in fields)
         query = QuerySet(RecordModel)
-        query = query.create(**data)
+        query = query.create(**record.dict())
         query.save()
 
         return Response({
@@ -387,15 +380,10 @@ class CommandView(views.APIView):
             }, status=status.HTTP_401_UNAUTHORIZED)
 
         data = merge_body_params_as_dict(request)
-        fields = [
-            'lighting', 'acid_actuator',
-            'alkaline_actuator', 'nutrient_actuator',
-            'fans_rpm', 'accepted',
-        ]
+        command = Command(**data)
 
-        data = dict((k, v) for k, v in data.items() if k in fields)
         query = QuerySet(CommandModel)
-        query = query.create(**data)
+        query = query.create(**command.dict())
         query.save()
 
         return Response({
