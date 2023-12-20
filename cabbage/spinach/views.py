@@ -13,7 +13,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.vary import vary_on_headers
 from rest_framework import viewsets, permissions, views, status
-from rest_framework.renderers import TemplateHTMLRenderer, BaseRenderer, JSONRenderer
+from rest_framework.decorators import renderer_classes
+from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -21,11 +22,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import settings
 from .base import Record, Command
-from .models import RecordModel, CommandModel, ProfileModel
+from .models import RecordModel, CommandModel, ProfileModel, ForecastModel
 from .odac_plant_disease import odac_plant_disease_predictor
+from .renderers import PNGRenderer
 from .serializers import UserSerializer, GroupSerializer, MyTokenObtainPairSerializer
-from .utils import merge_body_params_as_dict, ok_json, NormalizeSerializer, tokenizer, get, refresh_token_verify, \
-    get_mime_type
+from .utils import (merge_body_params_as_dict, ok_json, NormalizeSerializer, tokenizer, get, refresh_token_verify,
+                    get_mime_type)
 
 
 class LoginView(views.APIView):
@@ -180,15 +182,21 @@ class ODACPlantDiseaseView(views.APIView):
             predictions = []
 
         scheme = get('scheme', request, 'http')
-        host = scheme + '://' + get('META.HTTP_HOST', request, 'localhost:80')
+        host = scheme + '://' + get('META.HTTP_HOST', request, 'localhost')
 
         token = get('token', request.query_params, '')
         query_params = '?token=' + token
 
         for idx, prediction in enumerate(predictions):
             image_data_boxes = prediction['image_data_boxes']
-            prediction['image_data_boxes'] = host + '/odac/plant-disease/images/' + image_data_boxes + query_params
+            image_data_boxes = host + '/odac/plant-disease/images/' + image_data_boxes + query_params
+            prediction['image_data_boxes'] = image_data_boxes
             predictions[idx] = prediction
+
+            # saving into database!
+            query = QuerySet(ForecastModel)
+            query = query.create(image=image_data_boxes, result=prediction)
+            query.save()
 
         return predictions
 
@@ -220,9 +228,12 @@ class ODACPlantDiseaseView(views.APIView):
                         for chunk in image_sample.chunks():
                             buffer.write(chunk)
 
+                        # get data prediction!
+                        predictions = self.predict(request, fp=buffer)
+
                         return Response({
                             'message': 'successful predict plant disease',
-                            'data': self.predict(request, fp=buffer),
+                            'data': predictions,
                         })
 
                 return Response({
@@ -232,16 +243,6 @@ class ODACPlantDiseaseView(views.APIView):
         return Response({
             'message': 'multipart-form data image_sample is not found',
         }, status=status.HTTP_400_BAD_REQUEST)
-
-
-class PNGRenderer(BaseRenderer):
-    media_type = 'image/png'
-    format = 'png'
-    charset = None
-    render_style = 'binary'
-
-    def render(self, data, media_type=None, renderer_context=None):
-        return data
 
 
 class ODACPlantDiseaseImagesView(views.APIView):
@@ -280,6 +281,35 @@ class ODACPlantDiseaseImagesView(views.APIView):
         return Response(b'', status=status.HTTP_400_BAD_REQUEST)
 
 
+class ForecastImagesView(views.APIView):
+
+    @renderer_classes([PNGRenderer])
+    @method_decorator(vary_on_headers('Host'))
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        token = get('token', request.query_params, '')
+
+        if not compare_digest(token, settings.ODAC_PLANT_DISEASE_SECRET):
+            return Response({
+                'message': 'access denied',
+                'data': [],
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        query = QuerySet(ForecastModel)
+        query = query.all()
+        query = query.order_by('-created_at')
+
+        data = []
+        forecasts = query[:]
+        for forecast in forecasts:
+            if isinstance(forecast, ForecastModel):
+                data.append(forecast.result)
+
+        return Response({
+            'message': 'successful get data predictions',
+            'data': data,
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
 def index(request: HttpRequest) -> HttpResponse:
     return render(request, template_name='spinach/index.html',
                   context={
@@ -289,65 +319,85 @@ def index(request: HttpRequest) -> HttpResponse:
                   })
 
 
-def records(request: HttpRequest):
-    if request.method in ('GET', 'POST'):
-        if request.method == 'GET':
-            query = QuerySet(RecordModel)
-            query = query.all()
-            serializer = NormalizeSerializer()
-            data = serializer.serialize(query)
+class RecordView(views.APIView):
 
-            return ok_json({
-                'message': 'successful',
-                'data': data,
-            })
+    @method_decorator(vary_on_headers('Host'))
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        query = QuerySet(RecordModel)
+        query = query.all()
+        serializer = NormalizeSerializer()
+        data = serializer.serialize(query)
 
-        if request.method == 'POST':
-            data = merge_body_params_as_dict(request)
-            model = Record(**data)
+        return Response({
+            'message': 'successful get data records',
+            'data': data,
+        })
 
-            query = QuerySet(RecordModel)
-            query = query.create(**model.dict())
-            query.save()
+    @method_decorator(vary_on_headers('Host'))
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        token = get('token', request.query_params, '')
 
-            return ok_json({
-                'message': 'successful',
-                'data': data,
-            })
+        if not compare_digest(token, settings.IOT_HYDROPONIC_PROJECT_SECRET):
+            return Response({
+                'message': 'access denied',
+                'data': [],
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
-    return ok_json({
-        'message': 'nothing here!',
-        'data': None,
-    }, status=401)
+        data = merge_body_params_as_dict(request)
+        fields = [
+            'ph', 'ec', 'air_temp',
+            'humidity', 'water_flow',
+            'lighting', 'full_water_tank',
+            'acid_actuator', 'alkaline_actuator',
+            'nutrient_actuator', 'fans_rpm',
+        ]
+
+        data = dict((k, v) for k, v in data.items() if k in fields)
+        query = QuerySet(RecordModel)
+        query = query.create(**data)
+        query.save()
+
+        return Response({
+            'message': 'successful save records',
+        })
 
 
-def commands(request: HttpRequest):
-    if request.method in ('GET', 'POST'):
-        if request.method == 'GET':
-            query = QuerySet(CommandModel)
-            query = query.all()
-            serializer = NormalizeSerializer()
-            data = serializer.serialize(query)
+class CommandView(views.APIView):
 
-            return ok_json({
-                'message': 'successful',
-                'data': data,
-            })
+    @method_decorator(vary_on_headers('Host'))
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        query = QuerySet(CommandModel)
+        query = query.all()
+        serializer = NormalizeSerializer()
+        data = serializer.serialize(query)
 
-        if request.method == 'POST':
-            data = merge_body_params_as_dict(request)
-            model = Command(**data)
+        return Response({
+            'message': 'successful get data commands',
+            'data': data,
+        })
 
-            query = QuerySet(CommandModel)
-            query = query.create(**model.dict())
-            query.save()
+    @method_decorator(vary_on_headers('Host'))
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        token = get('token', request.query_params, '')
 
-            return ok_json({
-                'message': 'successful',
-                'data': data,
-            })
+        if not compare_digest(token, settings.IOT_HYDROPONIC_PROJECT_SECRET):
+            return Response({
+                'message': 'access denied',
+                'data': [],
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
-    return ok_json({
-        'message': 'nothing here!',
-        'data': None,
-    }, status=401)
+        data = merge_body_params_as_dict(request)
+        fields = [
+            'lighting', 'acid_actuator',
+            'alkaline_actuator', 'nutrient_actuator',
+            'fans_rpm', 'accepted',
+        ]
+
+        data = dict((k, v) for k, v in data.items() if k in fields)
+        query = QuerySet(CommandModel)
+        query = query.create(**data)
+        query.save()
+
+        return Response({
+            'message': 'successful save commands',
+        })

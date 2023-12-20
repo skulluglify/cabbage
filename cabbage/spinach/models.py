@@ -3,9 +3,6 @@ import uuid
 from django.contrib.auth.models import User
 from django.db import models
 
-from django.db import models
-from django.contrib.auth.models import AbstractUser, BaseUserManager
-
 
 class ProfileModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -53,7 +50,7 @@ class CommandModel(models.Model):
 
 
 class ForecastModel(models.Model):
-    image = models.FilePathField()
+    image = models.URLField()
     result = models.JSONField()
     created_at = models.DateTimeField(auto_now=True)
 

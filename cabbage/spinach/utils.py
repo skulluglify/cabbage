@@ -12,6 +12,8 @@ from django.db.models import Manager, QuerySet
 from django.db.models.base import ModelBase, Model
 from django.db.models.utils import AltersData
 from django.http import HttpRequest, HttpResponse
+from django.utils.datastructures import MultiValueDict
+from rest_framework.request import Request
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken, Token, AccessToken
 
@@ -25,17 +27,26 @@ def get_mime_type(buffer: IO[bytes] | UploadedFile):
     return mime
 
 
-def merge_body_params_as_dict(request: HttpRequest) -> dict:
-    data = request.POST.dict()
-    params = request.GET.dict()
+def merge_body_params_as_dict(request: HttpRequest | Request) -> dict:
+    data = {}
+    params = {}
+
+    if isinstance(request, HttpRequest):
+        data = request.POST.dict()
+        params = request.GET.dict()
+
+        if request.content_type in ('application/json',):
+            body = json.loads(request.body)
+            if type(body) is dict:
+                data.update(body)
+
+            data['body'] = body
+
+    if isinstance(request, Request):
+        data = dict(request.data)
+        params = dict(request.query_params)
+
     data.update(params)
-
-    if request.content_type in ('application/json',):
-        body = json.loads(request.body)
-        if type(body) is dict:
-            data.update(body)
-
-        data['body'] = body
     return data
 
 

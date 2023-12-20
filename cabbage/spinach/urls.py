@@ -25,8 +25,9 @@ urlpatterns = [
     path('profile/', views.ProfileView.as_view(), name='profile'),
     path('odac/plant-disease/', views.ODACPlantDiseaseView.as_view(), name='odac'),
     path('odac/plant-disease/images/<path:path>', views.ODACPlantDiseaseImagesView.as_view(), name='odac'),
-    path('index/', views.index),
-    path('records/', views.records, name='records'),
-    path('commands/', views.commands, name='commands'),
+    path('forecasts/', views.ForecastImagesView.as_view(), name='forecast_images'),
+    path('index/', views.index, name='index'),
+    path('records/', views.RecordView.as_view(), name='records'),
+    path('commands/', views.CommandView.as_view(), name='commands'),
     path('openapi/schema/', schema_view),
 ]
