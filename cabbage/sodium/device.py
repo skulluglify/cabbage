@@ -16,7 +16,7 @@ class DeviceSupport:
     xla, lazy, vulkan,
     mps, meta, hpu, mtia
     """
-    name = "cuda:0"
+    name = "cpu"
 
     @classmethod
     def pref(cls) -> torch.device:

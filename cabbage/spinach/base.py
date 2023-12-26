@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class Record(BaseModel):
     ph: float
+    ph_fuzzy: float
     ec: float
     air_temp: float
     humidity: float

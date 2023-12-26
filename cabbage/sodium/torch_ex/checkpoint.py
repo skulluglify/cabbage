@@ -44,7 +44,8 @@ def torch_model_save(epoch: int,
 def torch_model_load(model: nn.Module,
                      optimizer: Optimizer,
                      path: PathType,
-                     arcname: str = "model.pt") -> Tuple[int, Tensor]:
+                     arcname: str = "model.pt",
+                     map_location: Any | None = None) -> Tuple[int, Tensor]:
     """
         Torch Model Save.
 
@@ -52,17 +53,20 @@ def torch_model_load(model: nn.Module,
         >>> m_epoch, m_loss = torch_model_load(model, optimizer, path)
         >>> ...
 
+    :param map_location:
     :param model:
     :param optimizer:
     :param path:
     :param arcname:
     :return:
     """
+    if map_location is None:
+        map_location = torch.device('cpu')
 
     path = check_file_is_readable(path, arcname)
 
     data: Dict[str, Any]
-    data = torch.load(path)
+    data = torch.load(path, map_location=map_location)
 
     epoch: int
     epoch = data.get("epoch")

@@ -167,6 +167,10 @@ class ProfileView(views.APIView):
 
                         return Response({
                             'message': 'login successfully',
+                            # 'secrets': {
+                            #     'IOT_HYDROPONIC_PROJECT_SECRET': settings.IOT_HYDROPONIC_PROJECT_SECRET,
+                            #     'ODAC_PLANT_DISEASE_SECRET': settings.ODAC_PLANT_DISEASE_SECRET,
+                            # },
                             'token': tokenizer(token),
                         }, status=status.HTTP_200_OK)
 
@@ -325,6 +329,8 @@ class RecordView(views.APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
         query = QuerySet(RecordModel)
         query = query.all()
+        query = query.filter(dummy=False)
+        query = query.order_by('-created_at')
         serializer = NormalizeSerializer()
         data = serializer.serialize(query)
 
@@ -343,24 +349,109 @@ class RecordView(views.APIView):
                 'data': [],
             }, status=status.HTTP_401_UNAUTHORIZED)
 
+        columns = [
+            "ph", "ph_fuzzy", "ec", "air_temp", "humidity", "water_flow", "lighting", "full_water_tank",
+            "acid_actuator", "alkaline_actuator", "nutrient_actuator", "fans_rpm",
+        ]
+
         data = merge_body_params_as_dict(request)
+        merge = get('merge', data, ','.join(columns))  # key 'merge' not found, update all!
+        merge_columns = list(map(lambda x: str(x).strip().lower(), str(merge).strip().split(',')))
+        merge_columns = list(filter(lambda x: x is not None and x != '', merge_columns))
+        merge_columns = [column for column in merge_columns if column in columns]
+
         record = Record(**data)
 
         query = QuerySet(RecordModel)
-        query = query.create(**record.dict())
-        query.save()
+        query = query.all()
+        query = query.order_by('-created_at')
+        check = query.first()
+
+        # create new dummy first time!
+        if check is None:
+            record = Record(
+                ph=0.0,
+                ph_fuzzy=0.0,
+                ec=0.0,
+                air_temp=0.0,
+                humidity=0.0,
+                water_flow=0.0,
+                lighting=False,
+                full_water_tank=False,
+                acid_actuator=False,
+                alkaline_actuator=False,
+                nutrient_actuator=False,
+                fans_rpm=0,
+            )
+
+            query = QuerySet(RecordModel)
+            query = query.create(**record.dict())
+            query.save()
+
+            query = QuerySet(RecordModel)
+            query = query.all()
+            query = query.order_by('-created_at')
+            check = query.first()
+
+        if isinstance(check, RecordModel):
+            slots = check.slots or ''
+            slots_columns = list(map(lambda x: str(x).strip().lower(), str(slots).strip().split(',')))
+            slots_columns = list(filter(lambda x: x is not None and x != '', slots_columns))
+            slots_columns = list(set(merge_columns) | set(slots_columns))
+
+            # append new value in the current data record!
+            for column in merge_columns:
+                value = get(column, record, None)
+                if value is not None:
+                    setattr(check, column, value)
+
+            check.slots = ','.join(slots_columns)
+            check.save()
+
+            diff_columns = set(columns) ^ set(slots_columns)
+
+            # create new dummy after full task complete!
+            if len(diff_columns) == 0:
+                check.dummy = False
+                check.save()
+
+                record = Record(
+                    ph=0.0,
+                    ph_fuzzy=0.0,
+                    ec=0.0,
+                    air_temp=0.0,
+                    humidity=0.0,
+                    water_flow=0.0,
+                    lighting=False,
+                    full_water_tank=False,
+                    acid_actuator=False,
+                    alkaline_actuator=False,
+                    nutrient_actuator=False,
+                    fans_rpm=0,
+                )
+
+                query = QuerySet(RecordModel)
+                query = query.create(**record.dict())
+                query.save()
+
+            return Response({
+                'message': 'successful save records',
+            })
 
         return Response({
-            'message': 'successful save records',
-        })
+            'message': 'failed create data record',
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CommandView(views.APIView):
 
     @method_decorator(vary_on_headers('Host'))
     def get(self, request: Request, *args, **kwargs) -> Response:
+        size = int(get('size', request.query_params, '1'))
         query = QuerySet(CommandModel)
         query = query.all()
+        query = query.order_by('-created_at')
+        query = query[:size]
         serializer = NormalizeSerializer()
         data = serializer.serialize(query)
 

@@ -26,6 +26,7 @@ class ProfileModel(models.Model):
 
 class RecordModel(models.Model):
     ph = models.FloatField(default=0.0)
+    ph_fuzzy = models.FloatField(default=0.0)
     ec = models.FloatField(default=0.0)
     air_temp = models.FloatField(default=0.0)
     humidity = models.FloatField(default=0.0)
@@ -37,6 +38,8 @@ class RecordModel(models.Model):
     nutrient_actuator = models.BooleanField(default=False)
     fans_rpm = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now=True)
+    slots = models.CharField(default=None, max_length=200, null=True, blank=True)
+    dummy = models.BooleanField(default=True)
 
 
 class CommandModel(models.Model):

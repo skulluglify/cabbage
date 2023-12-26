@@ -134,6 +134,9 @@ def torch_jit_model_load(path: PathType,
     :param device:
     :return:
     """
+    if map_location is None:
+        map_location = torch.device('cpu')
+
     path = check_file_is_readable(path, "model.pt")
 
     model = torch.jit.load(path, map_location=map_location)
@@ -215,6 +218,9 @@ def torch_jit_model_load_tar(path: PathType,
     :param device:
     :return:
     """
+    if map_location is None:
+        map_location = torch.device('cpu')
+
     path = check_file_is_readable(path, arcname)
 
     with tarfile.open(path, mode) as tarstream:

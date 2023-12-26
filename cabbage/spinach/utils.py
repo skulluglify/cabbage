@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- encoding: UTF-8 -*-
 import json
-import magic
 from datetime import datetime
 from typing import Dict, Any, List, Sequence, Mapping, IO
 
+import magic
 from django.contrib.auth.models import Group, Permission
 from django.core.files.uploadedfile import UploadedFile
 from django.core.serializers.python import Serializer
@@ -12,7 +12,6 @@ from django.db.models import Manager, QuerySet
 from django.db.models.base import ModelBase, Model
 from django.db.models.utils import AltersData
 from django.http import HttpRequest, HttpResponse
-from django.utils.datastructures import MultiValueDict
 from rest_framework.request import Request
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken, Token, AccessToken
@@ -130,13 +129,6 @@ class NormalizeSerializer(Serializer):
                 return key
         return None
 
-    @staticmethod
-    def _key(tag_name_or_key: str) -> str:
-        if not tag_name_or_key.endswith('s'):
-            tag_name_or_key += 's'
-
-        return tag_name_or_key
-
     def get_dump_object(self, model: Model):
         wrapper = self.__class__
         fields = self.selected_fields
@@ -166,7 +158,7 @@ class NormalizeSerializer(Serializer):
                     # model!
                     if isinstance(field, Model):
                         serializer = wrapper()
-                        temp[self._key(tag_name_or_key)] = serializer.serialize(
+                        temp[tag_name_or_key] = serializer.serialize(
                             [field], fields=self._fields_selection_by_tag_name(tag_name_or_key, fields))
                         continue
 
@@ -177,7 +169,7 @@ class NormalizeSerializer(Serializer):
                             query = get_queryset()
                             if isinstance(query, QuerySet):
                                 serializer = wrapper()
-                                temp[self._key(tag_name_or_key)] = serializer.serialize(
+                                temp[tag_name_or_key] = serializer.serialize(
                                     query, fields=self._fields_selection_by_tag_name(tag_name_or_key, fields))
                                 continue
 
@@ -188,7 +180,7 @@ class NormalizeSerializer(Serializer):
 
                 else:
                     if isinstance(field, Sequence):
-                        temp[self._key(tag_name_or_key)] = field
+                        temp[tag_name_or_key] = field
                         continue
 
                     temp[tag_name_or_key] = field
@@ -196,8 +188,7 @@ class NormalizeSerializer(Serializer):
             else:
                 # mocked!
                 if tag_name is not None:
-                    temp[self._key(tag_name_or_key)] = []
+                    temp[tag_name_or_key] = []
 
                 temp[key] = None
         return temp
-

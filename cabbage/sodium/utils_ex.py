@@ -9,7 +9,7 @@ import attrs
 import numpy as np
 import torch
 from PIL import Image
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patches
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
@@ -36,7 +36,18 @@ class DrawBoxStyleConfig:
     font: PathType = p.Path(_cwd, "extra/fonts/Poppins/Poppins-Italic.ttf")
 
 
-def draw_box_style(img: Any, box_styles: List[BoxStyle], config: DrawBoxStyleConfig = DrawBoxStyleConfig()) -> Tensor:
+def draw_box_styles(img: Any,
+                    box_styles: List[BoxStyle],
+                    config: DrawBoxStyleConfig = DrawBoxStyleConfig(),
+                    names: List[str] | None = None) -> Tensor:
+    """
+        Draw Box Styles With More Enchant!
+    :param img:
+    :param box_styles:
+    :param config:
+    :param names:
+    :return:
+    """
     if isinstance(img, Image.Image):
         img = cvt_image_to_tensor(img)
     elif isinstance(img, np.ndarray):
@@ -58,7 +69,28 @@ def draw_box_style(img: Any, box_styles: List[BoxStyle], config: DrawBoxStyleCon
     ax.axis("off")
     imshow(img, axes=ax)
 
-    for box_style in box_styles:
+    h_line = patches.Rectangle(xy=(info.width * 0, info.height * 0.5 - 2),
+                               width=info.width, height=4, angle=0.0,
+                               rotation_point="xy", fill=True,
+                               color='lime', linewidth=0)
+
+    ax.add_patch(h_line)
+
+    v_line = patches.Rectangle(xy=(info.width * 0.5 - 2, info.height * 0),
+                               width=4, height=info.height, angle=0.0,
+                               rotation_point="xy", fill=True,
+                               color='lime', linewidth=0)
+
+    ax.add_patch(v_line)
+
+    circle = patches.Circle(xy=(info.width * 0.5, info.height * 0.5),
+                            radius=12, color='white')
+
+    ax.add_patch(circle)
+
+    names_count = 0 if names is None else len(names)
+
+    for idx, box_style in enumerate(box_styles):
         color: str
         edgecolor: str
 
@@ -78,26 +110,34 @@ def draw_box_style(img: Any, box_styles: List[BoxStyle], config: DrawBoxStyleCon
 
         x, y, w, h = cvt_datapoints_xyxy_to_codes(box_style.datapoints, fmt="xywh")
 
-        ax.text(x=x, y=y, s=box_style.name,
-                bbox=dict(facecolor=color, alpha=0.5, edgecolor=edgecolor),
+        ax.text(x=x, y=y, s=box_style.name, bbox=dict(facecolor=color, alpha=0.5, edgecolor=edgecolor),
                 fontdict=dict(size=18, color="white", font=config.font))
 
-        rect = Rectangle(xy=(x, y),
-                         width=w,
-                         height=h,
-                         angle=0.0,
-                         rotation_point="xy",
-                         fill=False,
-                         edgecolor=color,
-                         linewidth=2)
+        rect = patches.Rectangle(xy=(x, y), width=w, height=h,
+                                 angle=0.0, rotation_point="xy",
+                                 fill=False, edgecolor=color,
+                                 linewidth=2)
 
         ax.add_patch(rect)
+
+        cx, cy, w, h = cvt_datapoints_xyxy_to_codes(box_style.datapoints, fmt="cxcywh")
+
+        circle = patches.Circle(xy=(cx, cy), radius=12, color=color)
+
+        ax.add_patch(circle)
+
+        name = box_style.name
+        if names_count > idx:
+            name = names[idx]
+
+        ax.text(x=cx + 12, y=cy + 6, s=name, bbox=dict(facecolor=color, alpha=0.5, edgecolor=edgecolor),
+                fontdict=dict(size=18, color="white", font=config.font))
 
     buffer = io.BytesIO()
     fig.savefig(buffer, format="jpeg", dpi=dpi)
     fig.clear()
 
-    # plt.close(fig=fig)  # windows hasn't closed all.
+    plt.close(fig=fig)  # windows hasn't closed all.
     buffer.seek(0)
 
     img = Image.open(buffer)
@@ -108,11 +148,23 @@ def draw_box_style(img: Any, box_styles: List[BoxStyle], config: DrawBoxStyleCon
     return inp
 
 
-def draw_boxing_boxes_colored_ex(img: Tensor,
-                                 predictions: PredictionMapTypes | PredictionTypes,
-                                 colormaps: BoundingBoxColorMapTypes,
-                                 color_default: Colors | str = Colors.RED,
-                                 draw_box_style_config: DrawBoxStyleConfig = DrawBoxStyleConfig()) -> Tensor:
+def draw_image_boxes_colored_ex(img: Tensor,
+                                predictions: PredictionMapTypes | PredictionTypes,
+                                colormaps: BoundingBoxColorMapTypes,
+                                color_default: Colors | str = Colors.RED,
+                                draw_box_style_config: DrawBoxStyleConfig = DrawBoxStyleConfig(),
+                                names: List[str] | None = None) -> Tensor:
+    """
+        Draw Image Boxes Colored Enchant!
+    :param img:
+    :param predictions:
+    :param colormaps:
+    :param color_default:
+    :param draw_box_style_config:
+    :param names:
+    :return:
+    """
+
     box_styles: List[BoxStyle] = []
     for prediction in predictions:
 
@@ -153,5 +205,5 @@ def draw_boxing_boxes_colored_ex(img: Tensor,
         box_styles.append(BoxStyle(name=name, datapoints=datapoints, color=color))
 
     img = torch.from_numpy(cvt_f32_to_u8_x_array(img))
-    img = draw_box_style(img, box_styles=box_styles, config=draw_box_style_config)
+    img = draw_box_styles(img, box_styles=box_styles, config=draw_box_style_config, names=names)
     return img

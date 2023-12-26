@@ -4,7 +4,6 @@ from tempfile import NamedTemporaryFile
 from typing import Iterator, Tuple, IO, List, Dict, Any
 
 from PIL import Image
-from torch import Tensor
 
 from sodium.models.classification.resnet import create_cnn_model_resnet_trainable
 from sodium.models.detection.faster_rcnn import create_faster_rcnn_model_resnet_trainable
@@ -15,7 +14,8 @@ from sodium.torch_ex.utils import cvt_u8_to_f32_tensor
 from sodium.transforms import CenterCrop, Resize
 from sodium.utils import (cvt_image_to_tensor, data_prediction_normalize_dict, cvt_tensor_to_image,
                           auto_resize_keep_resolution)
-from sodium.utils_ex import draw_boxing_boxes_colored_ex
+from sodium.utils_ex import draw_image_boxes_colored_ex
+from torch import Tensor
 
 
 class ODACPlantDiseasePredictor:
@@ -97,20 +97,18 @@ class ODACPlantDiseasePredictor:
 
         results = []
 
-        for predictions in self.odi(inp):
+        for detect_predictions in self.odi(inp):
             temp = {}
 
             results.append(temp)
             temp['image'] = img
 
-            box = draw_boxing_boxes_colored_ex(inp, predictions, [])
-            image_data_boxes = cvt_tensor_to_image(box)
-            temp['image_data_boxes'] = image_data_boxes
+            names = []
 
             many_pred = []
             temp['predictions'] = many_pred
 
-            for pred in crop_by_predictions(inp, predictions):
+            for pred in crop_by_predictions(inp, detect_predictions):
                 out, label, confidence = pred
                 image = cvt_tensor_to_image(out)
 
@@ -124,6 +122,8 @@ class ODACPlantDiseasePredictor:
                         harvest=True,
                     ))
 
+                    names.append('Healthy')
+
                     continue
 
                 if label.endswith('Diseased'):
@@ -134,9 +134,15 @@ class ODACPlantDiseasePredictor:
                     out = Resize(size=(224, 244), antialias=False)(out)
 
                     classify = []
-                    for prediction in self.oci(out):
-                        prediction = dict(zip(('label', 'confidence'), prediction))
-                        classify.append(prediction)
+                    for classify_idx, classify_predictions in enumerate(self.oci(out)):
+                        classify_predictions = dict(zip(('label', 'confidence'), classify_predictions))
+                        if classify_idx == 0:
+                            names.append(classify_predictions.get('label'))
+
+                        classify.append(classify_predictions)
+
+                    if len(classify) == 0:
+                        names.append('Unknown')
 
                     many_pred.append(dict(
                         image=image,
@@ -148,6 +154,10 @@ class ODACPlantDiseasePredictor:
                     ))
 
                     continue
+
+            box = draw_image_boxes_colored_ex(inp, detect_predictions, colormaps=[], names=names)
+            image_data_boxes = cvt_tensor_to_image(box)
+            temp['image_data_boxes'] = image_data_boxes
 
         return results
 
@@ -196,7 +206,9 @@ class ODACPlantDiseasePredictor:
         schemas = self.predict(fp)
 
         for i, schema in enumerate(schemas):
-            with NamedTemporaryFile(mode='wb', prefix='odac-plant-disease-image-sample-', suffix='.png', dir=directory, delete=False) as stream:
+            with NamedTemporaryFile(mode='wb', prefix='odac-plant-disease-image-sample-',
+                                    suffix='.png', dir=directory, delete=False) as stream:
+
                 image_data_boxes: Image.Image
 
                 del schema['image']
