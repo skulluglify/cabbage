@@ -25,6 +25,7 @@ class ProfileModel(models.Model):
 
 
 class RecordModel(models.Model):
+    UUID = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ph = models.FloatField(default=0.0)
     ph_fuzzy = models.FloatField(default=0.0)
     ec = models.FloatField(default=0.0)

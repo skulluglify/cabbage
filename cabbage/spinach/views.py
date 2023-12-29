@@ -332,7 +332,22 @@ class RecordView(views.APIView):
         query = query.filter(dummy=False)
         query = query.order_by('-created_at')
         serializer = NormalizeSerializer()
-        data = serializer.serialize(query)
+        data = serializer.serialize(query, fields=[
+            'UUID',
+            'ph',
+            'ph_fuzzy',
+            'ec',
+            'air_temp',
+            'humidity',
+            'water_flow',
+            'lighting',
+            'full_water_tank',
+            'acid_actuator',
+            'alkaline_actuator',
+            'nutrient_actuator',
+            'fans_rpm',
+            'created_at',
+        ])
 
         return Response({
             'message': 'successful get data records',
@@ -360,15 +375,29 @@ class RecordView(views.APIView):
         merge_columns = list(filter(lambda x: x is not None and x != '', merge_columns))
         merge_columns = [column for column in merge_columns if column in columns]
 
+        UUID = get('UUID', data, get('uuid', data))
+
         record = Record(**data)
 
         query = QuerySet(RecordModel)
         query = query.all()
+
+        if UUID is not None:
+            query = query.filter(UUID=UUID)
+
+        else:
+            query = query.filter(dummy=True)
+
         query = query.order_by('-created_at')
         check = query.first()
 
         # create new dummy first time!
         if check is None:
+            if UUID is not None:
+                return Response({
+                    'message': f'record with uuid {UUID} is not found',
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             record = Record(
                 ph=0.0,
                 ph_fuzzy=0.0,
@@ -388,10 +417,7 @@ class RecordView(views.APIView):
             query = query.create(**record.dict())
             query.save()
 
-            query = QuerySet(RecordModel)
-            query = query.all()
-            query = query.order_by('-created_at')
-            check = query.first()
+            check = query
 
         if isinstance(check, RecordModel):
             slots = check.slots or ''
@@ -434,8 +460,13 @@ class RecordView(views.APIView):
                 query = query.create(**record.dict())
                 query.save()
 
+                check = query
+
             return Response({
                 'message': 'successful save records',
+                'data': {
+                    'UUID': check.UUID,
+                },
             })
 
         return Response({
