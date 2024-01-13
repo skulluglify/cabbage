@@ -84,7 +84,7 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_URLS_REGEX = r'^/api/(.*)$'
+CORS_URLS_REGEX = r'^/(api/odac)/(.*)$'
 
 CORS_ALLOW_METHODS = [
     'GET',
