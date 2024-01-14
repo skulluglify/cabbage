@@ -311,7 +311,7 @@ class ForecastImagesView(views.APIView):
         return Response({
             'message': 'successful get data predictions',
             'data': data,
-        }, status=status.HTTP_400_BAD_REQUEST)
+        }, status=status.HTTP_200_OK)
 
 
 def index(request: HttpRequest) -> HttpResponse:

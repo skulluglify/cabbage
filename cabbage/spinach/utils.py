@@ -105,7 +105,6 @@ def refresh_token_verify(token: Any) -> RefreshToken | None:
 class NormalizeSerializer(Serializer):
     """
         Normalize any type if is possible!\n
-        - added suffix 's' for key with many values
         - hidden any key if restricted
         - table related
         - datetime
